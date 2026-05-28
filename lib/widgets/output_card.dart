@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../core/theme/app_theme.dart';
+
 class OutputCard extends StatelessWidget {
   final String title;
   final String mode;
@@ -14,9 +16,11 @@ class OutputCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final bool hasBoundedHeight = constraints.hasBoundedHeight;
+        final hasBoundedHeight = constraints.hasBoundedHeight;
         final body = _OutputRenderer(
           mode: mode,
           data: data,
@@ -33,16 +37,13 @@ class OutputCard extends StatelessWidget {
             children: [
               Text(
                 title.toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.8,
-                  color: Color(0xFF111827),
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: AppColors.warning,
                 ),
               ),
-              const SizedBox(height: 14),
-              const Divider(height: 1, color: Color(0xFFE5E7EB)),
-              const SizedBox(height: 18),
+              const SizedBox(height: 12),
+              const Divider(),
+              const SizedBox(height: 16),
               if (hasBoundedHeight) Expanded(child: body) else body,
             ],
           ),
@@ -74,7 +75,9 @@ class _OutputRenderer extends StatelessWidget {
       _ => _StatusView(data: data),
     };
 
-    if (!scrollable) return content;
+    if (!scrollable) {
+      return content;
+    }
     return SingleChildScrollView(child: content);
   }
 }
@@ -86,12 +89,12 @@ class _StatusView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      (data['message'] ?? 'Sin contenido.').toString(),
-      style: const TextStyle(
-        fontSize: 14,
-        height: 1.55,
-        color: Color(0xFF374151),
+    return _PanelBlock(
+      child: Text(
+        (data['message'] ?? 'Sin contenido.').toString(),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyLarge?.copyWith(color: AppColors.muted),
       ),
     );
   }
@@ -110,7 +113,7 @@ class _SummaryView extends StatelessWidget {
 
     if (sections.isEmpty && quickReview.isEmpty && headline.trim().isEmpty) {
       return const _EmptyStructuredState(
-        message: 'No llegaron secciones válidas para el resumen.',
+        message: 'No llegaron secciones validas para el resumen.',
       );
     }
 
@@ -127,15 +130,7 @@ class _SummaryView extends StatelessWidget {
         ],
         if (quickReview.isNotEmpty) ...[
           const SizedBox(height: 18),
-          const Text(
-            'Repaso Rápido',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.7,
-              color: Color(0xFF111827),
-            ),
-          ),
+          _MicroLabel(text: 'Repaso Rapido'),
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,
@@ -161,7 +156,7 @@ class _FlashcardsView extends StatelessWidget {
     if (cards.isEmpty) {
       return const _EmptyStructuredState(
         message:
-            'No llegaron flashcards válidas. Vuelve a generar o revisa el formato del backend.',
+            'No llegaron flashcards validas. Vuelve a generar o revisa el formato del backend.',
       );
     }
 
@@ -187,7 +182,7 @@ class _QuizView extends StatelessWidget {
     if (questions.isEmpty) {
       return const _EmptyStructuredState(
         message:
-            'No llegaron preguntas válidas para el quiz. Vuelve a generar o revisa el formato del backend.',
+            'No llegaron preguntas validas para el quiz. Vuelve a generar o revisa el formato del backend.',
       );
     }
 
@@ -212,7 +207,7 @@ class _ChecklistView extends StatelessWidget {
     final items = _asList(data['items']);
     if (items.isEmpty) {
       return const _EmptyStructuredState(
-        message: 'No llegaron items válidos para el checklist.',
+        message: 'No llegaron items validos para el checklist.',
       );
     }
 
@@ -237,7 +232,7 @@ class _ConclusionsView extends StatelessWidget {
     final insights = _asList(data['insights']);
     if (insights.isEmpty) {
       return const _EmptyStructuredState(
-        message: 'No llegaron conclusiones válidas.',
+        message: 'No llegaron conclusiones validas.',
       );
     }
 
@@ -252,10 +247,12 @@ class _ConclusionsView extends StatelessWidget {
   }
 }
 
-class _BannerText extends StatelessWidget {
-  final String text;
+class _PanelBlock extends StatelessWidget {
+  final Widget child;
+  final Color? color;
+  final Color? borderColor;
 
-  const _BannerText({required this.text});
+  const _PanelBlock({required this.child, this.color, this.borderColor});
 
   @override
   Widget build(BuildContext context) {
@@ -263,18 +260,29 @@ class _BannerText extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.zero,
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        color: color ?? AppColors.surfaceAlt,
+        border: Border.all(color: borderColor ?? AppColors.border),
       ),
+      child: child,
+    );
+  }
+}
+
+class _BannerText extends StatelessWidget {
+  final String text;
+
+  const _BannerText({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return _PanelBlock(
+      color: AppColors.primary.withValues(alpha: 0.08),
+      borderColor: AppColors.primary.withValues(alpha: 0.35),
       child: Text(
         text,
-        style: const TextStyle(
-          fontSize: 15,
-          height: 1.45,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF111827),
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(color: AppColors.text, height: 1.5),
       ),
     );
   }
@@ -298,14 +306,14 @@ class _SummarySectionCardState extends State<_SummarySectionCard> {
     final points = _asStringList(widget.section['points']);
     return InkWell(
       onTap: () => setState(() => _expanded = !_expanded),
-      borderRadius: BorderRadius.zero,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: _expanded ? const Color(0xFFF9FAFB) : Colors.white,
-          borderRadius: BorderRadius.zero,
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          color: _expanded ? AppColors.surfaceAlt : AppColors.panel,
+          border: Border.all(
+            color: _expanded ? AppColors.secondary : AppColors.border,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,17 +324,13 @@ class _SummarySectionCardState extends State<_SummarySectionCard> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    (widget.section['heading'] ?? 'Sección').toString(),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF111827),
-                    ),
+                    (widget.section['heading'] ?? 'Seccion').toString(),
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
                 Icon(
                   _expanded ? Icons.remove : Icons.add,
-                  color: const Color(0xFF111827),
+                  color: AppColors.secondary,
                 ),
               ],
             ),
@@ -347,23 +351,17 @@ class _SummarySectionCardState extends State<_SummarySectionCard> {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Padding(
-                                padding: EdgeInsets.only(top: 6),
-                                child: Icon(
-                                  Icons.circle,
-                                  size: 7,
-                                  color: Color(0xFF111827),
-                                ),
+                              Container(
+                                width: 8,
+                                height: 8,
+                                margin: const EdgeInsets.only(top: 7),
+                                color: AppColors.warning,
                               ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
                                   point,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    height: 1.45,
-                                    color: Color(0xFF374151),
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyMedium,
                                 ),
                               ),
                             ],
@@ -401,78 +399,69 @@ class _FlashcardTileState extends State<_FlashcardTile> {
 
     return InkWell(
       onTap: () => setState(() => _showBack = !_showBack),
-      borderRadius: BorderRadius.zero,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.zero,
-          color: _showBack ? const Color(0xFF111827) : const Color(0xFFF9FAFB),
-          border: Border.all(
-            color: _showBack
-                ? const Color(0xFF111827)
-                : const Color(0xFFE5E7EB),
-          ),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(
+          begin: _showBack ? -1 : 1,
+          end: _showBack ? 1 : -1,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _showBack
-                        ? const Color(0x33FFFFFF)
-                        : const Color(0xFF111827),
-                    borderRadius: BorderRadius.zero,
-                  ),
-                  child: Text(
-                    _showBack
+        duration: const Duration(milliseconds: 240),
+        builder: (context, value, child) {
+          return Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.001)
+              ..rotateY(value * 1.57),
+            child: child,
+          );
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: _showBack ? AppColors.primary : AppColors.panel,
+            border: Border.all(
+              color: _showBack ? AppColors.primary : AppColors.border,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _MicroLabel(
+                    text: _showBack
                         ? 'Reverso ${widget.index}'
                         : 'Frente ${widget.index}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: _showBack ? Colors.white : const Color(0xFFF9FAFB),
+                    inverted: _showBack,
+                  ),
+                  const Spacer(),
+                  Text(
+                    _showBack ? 'Toca para regresar' : 'Toca para voltear',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: _showBack ? AppColors.background : AppColors.muted,
                     ),
                   ),
-                ),
-                const Spacer(),
-                Text(
-                  _showBack ? 'Toca para regresar' : 'Toca para voltear',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: _showBack
-                        ? const Color(0xFFD1D5DB)
-                        : const Color(0xFF6B7280),
+                ],
+              ),
+              const SizedBox(height: 18),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                transitionBuilder: (child, animation) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                child: Text(
+                  _showBack ? back : front,
+                  key: ValueKey(_showBack),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontSize: 17,
+                    height: 1.5,
+                    color: _showBack ? AppColors.background : AppColors.text,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              transitionBuilder: (child, animation) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-              child: Text(
-                _showBack ? back : front,
-                key: ValueKey(_showBack),
-                style: TextStyle(
-                  fontSize: 17,
-                  height: 1.45,
-                  fontWeight: FontWeight.w600,
-                  color: _showBack ? Colors.white : const Color(0xFF111827),
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -498,46 +487,22 @@ class _QuizQuestionCardState extends State<_QuizQuestionCard> {
     final correctIndex = (widget.item['correctIndex'] as num?)?.toInt() ?? -1;
     final explanation = (widget.item['explanation'] ?? '').toString();
 
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.zero,
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
+    return _PanelBlock(
+      color: AppColors.panel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF111827),
-                  borderRadius: BorderRadius.zero,
-                ),
-                child: Text(
-                  'Quiz ${widget.questionNumber}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+              _MicroLabel(text: 'Quiz ${widget.questionNumber}'),
               const Spacer(),
               if (_selectedIndex != null)
                 Text(
                   _selectedIndex == correctIndex ? 'Correcta' : 'Incorrecta',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
                     color: _selectedIndex == correctIndex
-                        ? const Color(0xFF15803D)
-                        : const Color(0xFFB91C1C),
+                        ? AppColors.success
+                        : AppColors.danger,
                   ),
                 ),
             ],
@@ -545,33 +510,22 @@ class _QuizQuestionCardState extends State<_QuizQuestionCard> {
           const SizedBox(height: 14),
           Text(
             (widget.item['question'] ?? '').toString(),
-            style: const TextStyle(
-              fontSize: 16,
-              height: 1.4,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF111827),
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(height: 1.45),
           ),
           const SizedBox(height: 16),
           for (int i = 0; i < options.length; i++)
-            _buildOption(i, options[i], correctIndex),
+            _buildOption(context, i, options[i], correctIndex),
           if (_selectedIndex != null && explanation.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
-                borderRadius: BorderRadius.zero,
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-              ),
+            _PanelBlock(
+              color: AppColors.surfaceAlt,
               child: Text(
                 explanation,
-                style: const TextStyle(
-                  fontSize: 13,
-                  height: 1.4,
-                  color: Color(0xFF4B5563),
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppColors.muted),
               ),
             ),
           ],
@@ -580,23 +534,31 @@ class _QuizQuestionCardState extends State<_QuizQuestionCard> {
     );
   }
 
-  Widget _buildOption(int index, String text, int correctIndex) {
+  Widget _buildOption(
+    BuildContext context,
+    int index,
+    String text,
+    int correctIndex,
+  ) {
     final hasAnswered = _selectedIndex != null;
     final isSelected = _selectedIndex == index;
     final isCorrect = correctIndex == index;
 
-    Color background = Colors.white;
-    Color border = const Color(0xFFD1D5DB);
-    Color label = const Color(0xFF111827);
+    Color background = AppColors.surface;
+    Color border = AppColors.border;
+    Color label = AppColors.text;
+    Color badge = AppColors.secondary;
 
     if (hasAnswered && isCorrect) {
-      background = const Color(0xFFDCFCE7);
-      border = const Color(0xFF22C55E);
-      label = const Color(0xFF166534);
+      background = AppColors.success.withValues(alpha: 0.14);
+      border = AppColors.success;
+      label = AppColors.success;
+      badge = AppColors.success;
     } else if (hasAnswered && isSelected && !isCorrect) {
-      background = const Color(0xFFFEE2E2);
-      border = const Color(0xFFEF4444);
-      label = const Color(0xFF991B1B);
+      background = AppColors.danger.withValues(alpha: 0.14);
+      border = AppColors.danger;
+      label = AppColors.danger;
+      badge = AppColors.danger;
     }
 
     return Padding(
@@ -605,13 +567,11 @@ class _QuizQuestionCardState extends State<_QuizQuestionCard> {
         onTap: hasAnswered
             ? null
             : () => setState(() => _selectedIndex = index),
-        borderRadius: BorderRadius.zero,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: background,
-            borderRadius: BorderRadius.zero,
             border: Border.all(color: border, width: 1.2),
           ),
           child: Row(
@@ -621,31 +581,21 @@ class _QuizQuestionCardState extends State<_QuizQuestionCard> {
                 width: 30,
                 height: 30,
                 alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: hasAnswered && isCorrect
-                      ? const Color(0xFF22C55E)
-                      : const Color(0xFF111827),
-                  border: Border.all(color: Colors.transparent),
-                ),
+                decoration: BoxDecoration(color: badge),
                 child: Text(
                   String.fromCharCode(65 + index),
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(color: AppColors.background),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   text,
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 1.4,
-                    fontWeight: FontWeight.w500,
-                    color: label,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: label),
                 ),
               ),
             ],
@@ -672,25 +622,37 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () => setState(() => _checked = !_checked),
-      borderRadius: BorderRadius.zero,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _checked ? const Color(0xFFECFDF5) : const Color(0xFFF9FAFB),
-          borderRadius: BorderRadius.zero,
+          color: _checked
+              ? AppColors.success.withValues(alpha: 0.12)
+              : AppColors.panel,
           border: Border.all(
-            color: _checked ? const Color(0xFF34D399) : const Color(0xFFE5E7EB),
+            color: _checked ? AppColors.success : AppColors.border,
           ),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              _checked ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: _checked
-                  ? const Color(0xFF059669)
-                  : const Color(0xFF6B7280),
+            Container(
+              width: 22,
+              height: 22,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: _checked ? AppColors.success : Colors.transparent,
+                border: Border.all(
+                  color: _checked ? AppColors.success : AppColors.muted,
+                ),
+              ),
+              child: _checked
+                  ? const Icon(
+                      Icons.check,
+                      size: 14,
+                      color: AppColors.background,
+                    )
+                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -699,25 +661,16 @@ class _ChecklistItemCardState extends State<_ChecklistItemCard> {
                 children: [
                   Text(
                     (widget.item['text'] ?? '').toString(),
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.4,
-                      fontWeight: FontWeight.w600,
-                      color: _checked
-                          ? const Color(0xFF065F46)
-                          : const Color(0xFF111827),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: _checked ? AppColors.success : AppColors.text,
                     ),
                   ),
                   if ((widget.item['why'] ?? '').toString().isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Text(
                       widget.item['why'].toString(),
-                      style: TextStyle(
-                        fontSize: 13,
-                        height: 1.4,
-                        color: _checked
-                            ? const Color(0xFF047857)
-                            : const Color(0xFF6B7280),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: _checked ? AppColors.success : AppColors.muted,
                       ),
                     ),
                   ],
@@ -748,14 +701,14 @@ class _InsightCardState extends State<_InsightCard> {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () => setState(() => _expanded = !_expanded),
-      borderRadius: BorderRadius.zero,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFB),
-          borderRadius: BorderRadius.zero,
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          color: _expanded ? AppColors.surfaceAlt : AppColors.panel,
+          border: Border.all(
+            color: _expanded ? AppColors.warning : AppColors.border,
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -767,18 +720,14 @@ class _InsightCardState extends State<_InsightCard> {
                 Expanded(
                   child: Text(
                     (widget.item['title'] ?? 'Insight').toString(),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF111827),
-                    ),
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
                 Icon(
                   _expanded
                       ? Icons.keyboard_arrow_up
                       : Icons.keyboard_arrow_down,
-                  color: const Color(0xFF111827),
+                  color: AppColors.warning,
                 ),
               ],
             ),
@@ -792,11 +741,9 @@ class _InsightCardState extends State<_InsightCard> {
                 padding: const EdgeInsets.only(top: 12),
                 child: Text(
                   (widget.item['detail'] ?? '').toString(),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    height: 1.45,
-                    color: Color(0xFF374151),
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(color: AppColors.muted),
                 ),
               ),
             ),
@@ -818,13 +765,34 @@ class _IndexPill extends StatelessWidget {
       width: 30,
       height: 30,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(color: Color(0xFF111827)),
+      decoration: const BoxDecoration(color: AppColors.secondary),
       child: Text(
         text,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          color: Colors.white,
+        style: Theme.of(
+          context,
+        ).textTheme.labelLarge?.copyWith(color: AppColors.background),
+      ),
+    );
+  }
+}
+
+class _MicroLabel extends StatelessWidget {
+  final String text;
+  final bool inverted;
+
+  const _MicroLabel({required this.text, this.inverted = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: inverted ? AppColors.background : AppColors.warning,
+      ),
+      child: Text(
+        text.toUpperCase(),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: inverted ? AppColors.text : AppColors.background,
         ),
       ),
     );
@@ -841,17 +809,14 @@ class _CapsuleLabel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.zero,
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        color: AppColors.surfaceAlt,
+        border: Border.all(color: AppColors.border),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF374151),
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodySmall?.copyWith(color: AppColors.text),
       ),
     );
   }
@@ -864,21 +829,12 @@ class _EmptyStructuredState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.zero,
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
+    return _PanelBlock(
       child: Text(
         message,
-        style: const TextStyle(
-          fontSize: 14,
-          height: 1.45,
-          color: Color(0xFF6B7280),
-        ),
+        style: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(color: AppColors.muted),
       ),
     );
   }
