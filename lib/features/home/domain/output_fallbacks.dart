@@ -87,7 +87,7 @@ List<String> _extractStudyLines(String text) {
       .split(RegExp(r'\n\s*\n+'))
       .expand((block) => block.split(RegExp(r'(?<=[.!?])\s+')))
       .map(_cleanStudyLine)
-      .where((line) => line.length >= 24)
+      .where(_isUsableStudyLine)
       .toList();
 
   if (paragraphs.isNotEmpty) {
@@ -97,7 +97,7 @@ List<String> _extractStudyLines(String text) {
   return text
       .split('\n')
       .map(_cleanStudyLine)
-      .where((line) => line.isNotEmpty)
+      .where(_isUsableStudyLine)
       .toList();
 }
 
@@ -107,6 +107,27 @@ String _cleanStudyLine(String value) {
       .replaceAll(RegExp(r'^\s*[-*•]\s*'), '')
       .replaceAll(RegExp(r'^\s*\d+[).:-]\s*'), '')
       .trim();
+}
+
+bool _isUsableStudyLine(String line) {
+  final cleaned = _normalizeIdea(line);
+  if (cleaned.length < 28) {
+    return false;
+  }
+
+  final meaningfulWords = cleaned
+      .split(RegExp(r'\s+'))
+      .where(
+        (word) =>
+            word.replaceAll(RegExp(r'[^a-zA-ZáéíóúÁÉÍÓÚñÑ]'), '').length >= 4,
+      )
+      .length;
+
+  if (meaningfulWords < 4) {
+    return false;
+  }
+
+  return !_looksLikeWeakPrompt(cleaned);
 }
 
 String _buildFallbackQuestion(String idea) {
@@ -132,11 +153,12 @@ String _buildFallbackQuestion(String idea) {
     return '¿Qué ocurrió en ese periodo?';
   }
 
-  return '¿Cuál es la idea principal de "$topic"?';
+  return '¿Que explica el texto sobre ${_lowercaseTopic(topic)}?';
 }
 
 String _buildFlashcardFront(String idea) {
   final lower = _cleanForMatch(idea);
+  final topic = _extractTopic(idea);
 
   if (lower.contains('fallec')) {
     return '¿Cuándo y por qué falleció?';
@@ -151,11 +173,11 @@ String _buildFlashcardFront(String idea) {
     return '¿Por qué se retiró de su actividad principal?';
   }
 
-  return '¿Cuál es la idea clave de ${_extractTopic(idea).toLowerCase()}?';
+  return '¿Que debes recordar sobre ${_lowercaseTopic(topic)}?';
 }
 
 String _buildActionTitle(String idea) =>
-    'Revisar ${_buildKeyword(idea).toLowerCase()}';
+    'Dominar ${_lowercaseTopic(_buildKeyword(idea))}';
 
 String _buildInsightTitle(String idea) => _buildSectionHeading(idea);
 
@@ -184,13 +206,15 @@ List<String> _buildFallbackOptions(
 }
 
 String _summarizeAnswer(String idea) {
-  final cleaned = _removeReferences(idea);
+  final cleaned = _normalizeIdea(idea);
   final clauses = cleaned
       .split(RegExp(r'[,;]'))
       .map((part) => part.trim())
       .toList();
 
-  if (clauses.length >= 2 && clauses.first.length < 90) {
+  if (clauses.length >= 2 &&
+      clauses.first.length >= 18 &&
+      clauses.first.length < 90) {
     return _limitWords('${clauses.first}: ${clauses[1]}', 24);
   }
 
@@ -198,7 +222,7 @@ String _summarizeAnswer(String idea) {
 }
 
 String _extractTopic(String idea) {
-  final cleaned = _removeReferences(idea);
+  final cleaned = _normalizeIdea(idea);
   final beforeVerb = cleaned
       .split(
         RegExp(
@@ -209,11 +233,18 @@ String _extractTopic(String idea) {
       .first
       .trim();
   final beforeComma = cleaned.split(RegExp(r'[,;:]')).first.trim();
-  final candidate = beforeVerb.length >= 8 && beforeVerb.length <= 80
+  final candidate = beforeVerb.length >= 14 && beforeVerb.length <= 80
       ? beforeVerb
       : beforeComma;
 
-  return _limitWords(candidate.isEmpty ? cleaned : candidate, 7);
+  final normalized = _stripLeadingConnectors(
+    candidate.isEmpty ? cleaned : candidate,
+  );
+  final safeTopic = _hasEnoughSignal(normalized)
+      ? normalized
+      : _firstMeaningfulFragment(cleaned);
+
+  return _limitWords(safeTopic, 9);
 }
 
 String _removeReferences(String value) {
@@ -221,6 +252,73 @@ String _removeReferences(String value) {
       .replaceAll(RegExp(r'\[[^\]]*\]'), '')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
+}
+
+String _normalizeIdea(String value) {
+  return _stripLeadingConnectors(
+    _removeReferences(value)
+        .replaceAll(RegExp(r'^[¿?¡!.,;:()\s]+'), '')
+        .replaceAll(RegExp(r'[¿?¡!]'), '')
+        .trim(),
+  );
+}
+
+String _stripLeadingConnectors(String value) {
+  return value
+      .replaceFirst(
+        RegExp(
+          r'^(ahora bien|para ello|por ello|por otro lado|ademas|además|en cambio|sin embargo|en resumen|por ejemplo|de hecho|es decir|por tanto|entonces|en este caso)\b[:,]?\s*',
+          caseSensitive: false,
+        ),
+        '',
+      )
+      .trim();
+}
+
+bool _hasEnoughSignal(String value) {
+  final words = value
+      .split(RegExp(r'\s+'))
+      .where(
+        (word) =>
+            word.replaceAll(RegExp(r'[^a-zA-ZáéíóúÁÉÍÓÚñÑ]'), '').length >= 4,
+      )
+      .toList();
+  return value.length >= 16 && words.length >= 2;
+}
+
+bool _looksLikeWeakPrompt(String value) {
+  final normalized = _cleanForMatch(value);
+  return normalized.startsWith('ahora bien') ||
+      normalized.startsWith('para ello') ||
+      normalized.startsWith('por otro lado') ||
+      normalized.startsWith('en resumen') ||
+      normalized == 'udp' ||
+      normalized == 'tcp';
+}
+
+String _firstMeaningfulFragment(String value) {
+  final words = value
+      .split(RegExp(r'\s+'))
+      .where((word) => word.isNotEmpty)
+      .toList();
+  final filtered = words.where((word) {
+    final cleaned = word.replaceAll(RegExp(r'[^a-zA-ZáéíóúÁÉÍÓÚñÑ]'), '');
+    return cleaned.length >= 4;
+  }).toList();
+
+  if (filtered.length >= 3) {
+    return filtered.take(8).join(' ');
+  }
+
+  return value;
+}
+
+String _lowercaseTopic(String value) {
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) {
+    return 'el contenido';
+  }
+  return '${trimmed[0].toLowerCase()}${trimmed.substring(1)}';
 }
 
 String _cleanForMatch(String value) {

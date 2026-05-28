@@ -49,7 +49,7 @@ class ControlPanel extends StatelessWidget {
             border: Border.all(color: AppColors.border),
           ),
           child: Text(
-            'Consejo: usa texto continuo o bloques bien separados para mejorar la estructura del resultado.',
+            'Consejo: usa texto continuo o bloques bien separados para obtener una salida mas clara.',
             style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.muted),
           ),
         ),

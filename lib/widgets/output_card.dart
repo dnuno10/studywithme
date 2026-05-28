@@ -399,60 +399,60 @@ class _FlashcardTileState extends State<_FlashcardTile> {
 
     return InkWell(
       onTap: () => setState(() => _showBack = !_showBack),
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(
-          begin: _showBack ? -1 : 1,
-          end: _showBack ? 1 : -1,
-        ),
-        duration: const Duration(milliseconds: 240),
-        builder: (context, value, child) {
-          return Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.001)
-              ..rotateY(value * 1.57),
-            child: child,
-          );
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: _showBack ? AppColors.primary : AppColors.panel,
-            border: Border.all(
-              color: _showBack ? AppColors.primary : AppColors.border,
-            ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: _showBack ? AppColors.primary : AppColors.panel,
+          border: Border.all(
+            color: _showBack ? AppColors.primary : AppColors.border,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  _MicroLabel(
-                    text: _showBack
-                        ? 'Reverso ${widget.index}'
-                        : 'Frente ${widget.index}',
-                    inverted: _showBack,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _MicroLabel(
+                  text: _showBack
+                      ? 'Reverso ${widget.index}'
+                      : 'Frente ${widget.index}',
+                  inverted: _showBack,
+                ),
+                const Spacer(),
+                Text(
+                  _showBack ? 'Toca para regresar' : 'Toca para voltear',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: _showBack ? AppColors.background : AppColors.muted,
                   ),
-                  const Spacer(),
-                  Text(
-                    _showBack ? 'Toca para regresar' : 'Toca para voltear',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: _showBack ? AppColors.background : AppColors.muted,
-                    ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0.02, 0.08),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
                   ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                transitionBuilder: (child, animation) {
-                  return FadeTransition(opacity: animation, child: child);
-                },
+                );
+              },
+              child: Container(
+                key: ValueKey('${widget.index}_$_showBack'),
+                width: double.infinity,
+                constraints: const BoxConstraints(minHeight: 108),
+                alignment: Alignment.centerLeft,
                 child: Text(
                   _showBack ? back : front,
-                  key: ValueKey(_showBack),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontSize: 17,
                     height: 1.5,
@@ -460,8 +460,8 @@ class _FlashcardTileState extends State<_FlashcardTile> {
                   ),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

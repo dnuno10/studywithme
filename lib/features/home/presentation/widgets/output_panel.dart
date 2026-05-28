@@ -39,7 +39,6 @@ class OutputPanel extends StatelessWidget {
               };
 
     return PixelPanel(
-      accentColor: AppColors.primary,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

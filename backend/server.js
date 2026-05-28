@@ -78,7 +78,7 @@ function extractUsefulLines(text) {
     .split(/\n\s*\n+/)
     .flatMap((block) => block.split(/(?<=[.!?])\s+/))
     .map(cleanStudyLine)
-    .filter((line) => line.length >= 24)
+    .filter(isUsableStudyLine)
     .filter((line) => !/^```/.test(line));
 
   if (sentences.length > 0) return sentences;
@@ -87,6 +87,7 @@ function extractUsefulLines(text) {
     .replace(/\r/g, "")
     .split("\n")
     .map(cleanStudyLine)
+    .filter(isUsableStudyLine)
     .filter(Boolean)
     .filter((line) => !/^```/.test(line));
 }
@@ -97,6 +98,91 @@ function cleanStudyLine(value) {
     .replace(/^\s*[-*•]\s*/, "")
     .replace(/^\s*\d+[).:-]\s*/, "")
     .trim();
+}
+
+function stripLeadingConnectors(value) {
+  return String(value ?? "")
+    .replace(
+      /^(ahora bien|para ello|por ello|por otro lado|ademas|además|en cambio|sin embargo|en resumen|por ejemplo|de hecho|es decir|por tanto|entonces|en este caso)\b[:,]?\s*/i,
+      ""
+    )
+    .trim();
+}
+
+function normalizeIdea(value) {
+  return stripLeadingConnectors(
+    removeReferences(value)
+      .replace(/^[¿?¡!.,;:()\s]+/, "")
+      .replace(/[¿?¡!]/g, "")
+      .trim()
+  );
+}
+
+function looksLikeWeakPrompt(value) {
+  const normalized = cleanForMatch(value);
+  return (
+    normalized.startsWith("ahora bien") ||
+    normalized.startsWith("para ello") ||
+    normalized.startsWith("por otro lado") ||
+    normalized.startsWith("en resumen") ||
+    normalized === "udp" ||
+    normalized === "tcp"
+  );
+}
+
+function hasEnoughSignal(value) {
+  const words = String(value ?? "")
+    .split(/\s+/)
+    .filter((word) => word.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/g, "").length >= 4);
+  return String(value ?? "").trim().length >= 16 && words.length >= 2;
+}
+
+function firstMeaningfulFragment(value) {
+  const words = String(value ?? "")
+    .split(/\s+/)
+    .filter(Boolean);
+  const filtered = words.filter(
+    (word) => word.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/g, "").length >= 4
+  );
+
+  if (filtered.length >= 3) {
+    return filtered.slice(0, 8).join(" ");
+  }
+
+  return String(value ?? "").trim();
+}
+
+function lowercaseTopic(value) {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return "el contenido";
+  return `${trimmed[0].toLowerCase()}${trimmed.slice(1)}`;
+}
+
+function isUsableStudyLine(line) {
+  const cleaned = normalizeIdea(line);
+  if (cleaned.length < 28) return false;
+
+  const meaningfulWords = cleaned
+    .split(/\s+/)
+    .filter((word) => word.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/g, "").length >= 4)
+    .length;
+
+  if (meaningfulWords < 4) return false;
+
+  return !looksLikeWeakPrompt(cleaned);
+}
+
+function isWeakText(value, minChars = 12, minMeaningfulWords = 2) {
+  const cleaned = normalizeIdea(value);
+  const words = cleaned
+    .split(/\s+/)
+    .filter((word) => word.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/g, "").length >= 4);
+
+  return (
+    cleaned.length < minChars ||
+    words.length < minMeaningfulWords ||
+    looksLikeWeakPrompt(cleaned)
+  );
 }
 
 function limitWords(text, maxWords = 14) {
@@ -135,22 +221,27 @@ function cleanForMatch(value) {
 }
 
 function extractTopic(value) {
-  const cleaned = removeReferences(value);
+  const cleaned = normalizeIdea(value);
   const beforeVerb = cleaned.split(
     /\s+(es|son|fue|fueron|incluye|incluyen|provocó|provoco|quedaron|se|pasó|paso|vivió|vivio|recibió|recibio)\s+/i
   )[0].trim();
   const beforeComma = cleaned.split(/[,;:]/)[0].trim();
   const candidate =
-    beforeVerb.length >= 8 && beforeVerb.length <= 80 ? beforeVerb : beforeComma;
+    beforeVerb.length >= 14 && beforeVerb.length <= 80 ? beforeVerb : beforeComma;
 
-  return limitWords(candidate || cleaned, 7);
+  const normalized = stripLeadingConnectors(candidate || cleaned);
+  const safeTopic = hasEnoughSignal(normalized)
+    ? normalized
+    : firstMeaningfulFragment(cleaned);
+
+  return limitWords(safeTopic, 9);
 }
 
 function summarizeAnswer(value) {
-  const cleaned = removeReferences(value);
+  const cleaned = normalizeIdea(value);
   const clauses = cleaned.split(/[,;]/).map((part) => part.trim());
 
-  if (clauses.length >= 2 && clauses[0].length < 90) {
+  if (clauses.length >= 2 && clauses[0].length >= 18 && clauses[0].length < 90) {
     return limitWords(`${clauses[0]}: ${clauses[1]}`, 24);
   }
 
@@ -159,7 +250,7 @@ function summarizeAnswer(value) {
 
 function buildFallbackQuestion(value) {
   const lower = cleanForMatch(value);
-  const topic = extractTopic(value).toLowerCase();
+  const topic = extractTopic(value);
 
   if (lower.includes("fallec")) return "¿Qué se menciona sobre su fallecimiento?";
   if (lower.includes("perdi") || lower.includes("perdio")) {
@@ -178,11 +269,12 @@ function buildFallbackQuestion(value) {
     return "¿Qué ocurrió en ese periodo?";
   }
 
-  return `¿Cuál es la idea principal de "${topic}"?`;
+  return `¿Que explica el texto sobre ${lowercaseTopic(topic)}?`;
 }
 
 function buildFlashcardFront(value) {
   const lower = cleanForMatch(value);
+  const topic = extractTopic(value);
 
   if (lower.includes("fallec")) return "¿Cuándo y por qué falleció?";
   if (lower.includes("abuso") || lower.includes("adiccion")) {
@@ -195,7 +287,7 @@ function buildFlashcardFront(value) {
     return "¿Por qué se retiró de su actividad principal?";
   }
 
-  return `¿Cuál es la idea clave de ${extractTopic(value).toLowerCase()}?`;
+  return `¿Que debes recordar sobre ${lowercaseTopic(topic)}?`;
 }
 
 function fallbackSummary(sourceText) {
@@ -224,7 +316,7 @@ function fallbackChecklist(sourceText) {
   return {
     type: "checklist",
     items: lines.map((line) => ({
-      text: `Revisar ${buildKeyword(line).toLowerCase()}`,
+      text: `Dominar ${lowercaseTopic(buildKeyword(line))}`,
       why: line
     }))
   };
@@ -436,6 +528,121 @@ function normalizeConclusions(result) {
   };
 }
 
+function repairSummary(result, sourceText) {
+  const fallback = fallbackSummary(sourceText);
+  const sections = result.sections
+    .map((section, index) => ({
+      heading: isWeakText(section.heading, 10, 2)
+        ? fallback.sections[index]?.heading ?? buildHeading(section.points[0] ?? "")
+        : section.heading,
+      points: section.points.filter((point) => !isWeakText(point, 18, 3))
+    }))
+    .filter((section) => section.points.length > 0);
+
+  return {
+    type: "resumen",
+    headline: isWeakText(result.headline, 18, 3) ? fallback.headline : result.headline,
+    sections: sections.length > 0 ? sections : fallback.sections,
+    quick_review: result.quick_review
+      .filter((item) => !isWeakText(item, 8, 1))
+      .slice(0, 6)
+  };
+}
+
+function repairChecklist(result, sourceText) {
+  const fallback = fallbackChecklist(sourceText);
+  const items = result.items
+    .map((item, index) => ({
+      text: isWeakText(item.text, 12, 2)
+        ? fallback.items[index]?.text ?? item.text
+        : item.text,
+      why: isWeakText(item.why, 20, 3)
+        ? fallback.items[index]?.why ?? item.why
+        : item.why
+    }))
+    .filter((item) => !isWeakText(item.text, 12, 2));
+
+  return {
+    type: "checklist",
+    items: items.length > 0 ? items : fallback.items
+  };
+}
+
+function repairConclusions(result, sourceText) {
+  const fallback = fallbackConclusions(sourceText);
+  const insights = result.insights
+    .map((item, index) => ({
+      title: isWeakText(item.title, 10, 2)
+        ? fallback.insights[index]?.title ?? buildHeading(item.detail)
+        : item.title,
+      detail: isWeakText(item.detail, 20, 3)
+        ? fallback.insights[index]?.detail ?? item.detail
+        : item.detail
+    }))
+    .filter(
+      (item) => !isWeakText(item.title, 10, 2) || !isWeakText(item.detail, 20, 3)
+    );
+
+  return {
+    type: "conclusiones",
+    insights: insights.length > 0 ? insights : fallback.insights
+  };
+}
+
+function repairFlashcards(result, sourceText) {
+  const fallback = fallbackFlashcards(sourceText);
+  const cards = result.cards
+    .map((card, index) => {
+      const fallbackCard = fallback.cards[index] ?? fallback.cards[0];
+      return {
+        front: isWeakText(card.front, 16, 3)
+          ? fallbackCard?.front ?? buildFlashcardFront(card.back)
+          : card.front,
+        back: isWeakText(card.back, 20, 3)
+          ? fallbackCard?.back ?? card.back
+          : card.back
+      };
+    })
+    .filter(
+      (card) =>
+        !isWeakText(card.front, 16, 3) && !isWeakText(card.back, 20, 3)
+    );
+
+  return {
+    type: "flashcards",
+    cards: cards.length > 0 ? cards : fallback.cards
+  };
+}
+
+function repairQuiz(result, sourceText) {
+  const fallback = fallbackQuiz(sourceText);
+  const questions = result.questions
+    .map((item, index) => {
+      const fallbackItem = fallback.questions[index] ?? fallback.questions[0];
+      const options = item.options.filter((option) => !isWeakText(option, 12, 2));
+
+      return {
+        question: isWeakText(item.question, 16, 3)
+          ? fallbackItem?.question ?? item.question
+          : item.question,
+        options:
+          options.length >= 4
+            ? options.slice(0, 4)
+            : (fallbackItem?.options ?? item.options).slice(0, 4),
+        correctIndex: item.correctIndex >= 0 && item.correctIndex < 4 ? item.correctIndex : 0,
+        explanation: isWeakText(item.explanation, 18, 3)
+          ? fallbackItem?.explanation ?? item.explanation
+          : item.explanation
+      };
+    })
+    .filter((item) => !isWeakText(item.question, 16, 3) && item.options.length >= 4);
+
+  return {
+    type: "quiz",
+    questions: questions.length > 0 ? questions : fallback.questions
+  };
+}
+
 function normalizeResult(mode, result) {
   switch (mode) {
     case "quiz":
@@ -449,6 +656,22 @@ function normalizeResult(mode, result) {
     case "resumen":
     default:
       return normalizeSummary(result);
+  }
+}
+
+function repairResult(mode, result, sourceText) {
+  switch (mode) {
+    case "quiz":
+      return repairQuiz(result, sourceText);
+    case "flashcards":
+      return repairFlashcards(result, sourceText);
+    case "checklist":
+      return repairChecklist(result, sourceText);
+    case "conclusiones":
+      return repairConclusions(result, sourceText);
+    case "resumen":
+    default:
+      return repairSummary(result, sourceText);
   }
 }
 
@@ -566,6 +789,7 @@ ${content}`
     try {
       result = extractJson(rawResult);
       normalized = normalizeResult(mode, result);
+      normalized = repairResult(mode, normalized, content);
     } catch (parseError) {
       normalized = fallbackResult(mode, rawResult || content);
     }
