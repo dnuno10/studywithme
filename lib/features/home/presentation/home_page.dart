@@ -22,6 +22,8 @@ class _HomePageState extends State<HomePage> {
 
   String _selectedMode = generationModes.first.id;
   Map<String, dynamic>? _output;
+  String? _requestStatus;
+  String? _requestErrorBody;
   bool _isLoading = false;
 
   String get _selectedLabel {
@@ -41,23 +43,35 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _isLoading = true;
       _output = null;
+      _requestStatus = null;
+      _requestErrorBody = null;
     });
 
     try {
-      final result = await _contentService.generateContent(
+      final response = await _contentService.generateContent(
         content: content,
         mode: _selectedMode,
       );
 
       setState(() {
+        _requestStatus = 'Estado HTTP: ${response.statusCode}';
+        _requestErrorBody = null;
         _output = ensureRenderableOutput(
           mode: _selectedMode,
-          result: result,
+          result: response.result,
           sourceText: content,
         );
       });
-    } catch (_) {
+    } on ContentRequestException catch (error) {
       setState(() {
+        _requestStatus = 'Estado HTTP: ${error.statusCode}';
+        _requestErrorBody = error.body;
+        _output = fallbackOutputForMode(_selectedMode, content);
+      });
+    } catch (error) {
+      setState(() {
+        _requestStatus = 'Estado HTTP: no disponible';
+        _requestErrorBody = error.toString();
         _output = fallbackOutputForMode(_selectedMode, content);
       });
     } finally {
@@ -127,6 +141,8 @@ class _HomePageState extends State<HomePage> {
                                       selectedMode: _selectedMode,
                                       selectedLabel: _selectedLabel,
                                       output: _output,
+                                      requestStatus: _requestStatus,
+                                      requestErrorBody: _requestErrorBody,
                                       isLoading: _isLoading,
                                     ),
                                   ),
@@ -154,6 +170,8 @@ class _HomePageState extends State<HomePage> {
                                     selectedMode: _selectedMode,
                                     selectedLabel: _selectedLabel,
                                     output: _output,
+                                    requestStatus: _requestStatus,
+                                    requestErrorBody: _requestErrorBody,
                                     isLoading: _isLoading,
                                   ),
                                 ),

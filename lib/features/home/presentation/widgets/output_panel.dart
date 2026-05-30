@@ -9,6 +9,8 @@ class OutputPanel extends StatelessWidget {
   final String selectedMode;
   final String selectedLabel;
   final Map<String, dynamic>? output;
+  final String? requestStatus;
+  final String? requestErrorBody;
   final bool isLoading;
 
   const OutputPanel({
@@ -16,6 +18,8 @@ class OutputPanel extends StatelessWidget {
     required this.selectedMode,
     required this.selectedLabel,
     required this.output,
+    required this.requestStatus,
+    required this.requestErrorBody,
     required this.isLoading,
   });
 
@@ -47,6 +51,32 @@ class OutputPanel extends StatelessWidget {
             description:
                 'Resultados interactivos con estructura legible y respuesta inmediata.',
           ),
+          if (requestStatus != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              requestStatus!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppColors.secondary,
+              ),
+            ),
+          ],
+          if (requestErrorBody != null && requestErrorBody!.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.panel,
+                border: Border.all(color: AppColors.warning),
+              ),
+              child: SelectableText(
+                requestErrorBody!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppColors.muted,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           Expanded(
             child: AnimatedSwitcher(

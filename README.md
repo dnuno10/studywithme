@@ -1,7 +1,7 @@
 # studywithme
 
 1.- run backend
-cp .env .env  
+cd backend
 npm run dev
 
 2.- run flutter
