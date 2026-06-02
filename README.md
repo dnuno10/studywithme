@@ -12,10 +12,10 @@ npm run dev
 flutter pub get
 flutter run -d chrome
 
-USO DE AI
+USO DE IA
 
-Se utilizo Claude Code para definir a estructura de cada tipo de salida correspondiente a cada tipo de modo de estudio, asimismo se utilizo Para definir las validaciones correspondientes de cada salida para asegurar que las salidas estuviera tratadas y normalizadas para su procesamineto y adaptacion a la estructura visual de los componentes que se manejan en flutter.
+Se utilizó Claude Code para definir la estructura de cada tipo de salida correspondiente a cada tipo de modo de estudio, asimismo se utilizó para definir las validaciones correspondientes de cada salida para asegurar que las salidas estuvieran tratadas y normalizadas para su procesamiento y adaptación a la estructura visual de los componentes que se manejan en Flutter. 
 
-Tambien se utilizo inteligencia artifical, especificamente chat gpt para reestructurar y darle un formato con mejor ortografía a la documentación de apoyo, el cual fundamenta de manera detallada las cuetsiones de implementacion y resolulcion del problema, desde su identifciacon hasta ejecución.
+También se utilizó inteligencia artificial, específicamente ChatGPT, para reestructurar y darle un formato con mejor ortografía a la documentación de apoyo, la cual fundamenta de manera detallada las cuestiones de implementación y resolución del problema, desde su identificación hasta ejecución. 
 
-El uso de inteligencia artifical fue utilizado mayormente como un copiloto, tanto en la reestrucutra de la documentación (que se desarrollo posterior al código de la aplicación), como en las validaciones correspondientes a la aplicación y en la adaptación ágil de implementación para validar la rederización eficiente del modelo utilizado por medio de la API y soluciones ofrecidas por OpenRouter
+El uso de inteligencia artificial fue utilizado mayormente como un copiloto, tanto en la reestructura de la documentación, que se desarrolló posterior al código de la aplicación, como en las validaciones correspondientes a la aplicación y en la adaptación ágil de implementación para validar la renderización eficiente del modelo utilizado por medio de la API y soluciones ofrecidas por OpenRouter.
